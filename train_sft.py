@@ -63,8 +63,9 @@ def train():
 
     # 3. Dataset
     print("Preparing dataset...")
-    # Load a small sample for demonstration. Set sample_size=None for full training.
-    dataset = create_main_dataset(sample_size=500) 
+    # Use larger dataset for meaningful learning. Set sample_size=None for full training.
+    # 500 samples is too few - model will just memorize/repeat.
+    dataset = create_main_dataset(sample_size=10000) 
     
     def collate_fn(batch):
         # Extract text from the "messages" format
@@ -194,7 +195,7 @@ def train():
     torch.save({
         'model_state_dict': model.state_dict(),
         'config': config,
-        'tokenizer_name': "gpt2"
+        'tokenizer_name': "Xenova/gpt-4o"  # Must match training tokenizer
     }, save_path)
     print(f"Model saved to {save_path}")
 
