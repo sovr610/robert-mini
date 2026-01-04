@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler, autocast
 from transformers import AutoTokenizer
 from reasoning_llm import ReasoningLLM, ModelRegistry
 from data_loader import create_main_dataset
@@ -10,20 +11,19 @@ from tqdm import tqdm
 
 def train():
     # 1. Configuration
-    # We'll use a small model for the demo, but you can switch to "llama-2-7b" etc.
-    model_name = "test-tiny" 
-    batch_size = 4 # Small batch size for CPU/Demo
+    # Switched to mistral-7b which fits on a single A100 80GB
+    model_name = "mistral-7b" 
+    batch_size = 8 # Increased batch size slightly for A100
     learning_rate = 3e-4
-    epochs = 1
-    max_seq_len = 512
+    epochs = 3 # Increased epochs for better training
+    max_seq_len = 2048 # Increased context length for reasoning
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
     # 2. Tokenizer
-    # We use GPT-2 tokenizer as a standard choice. 
-    # In production, you might use LlamaTokenizer (requires sentencepiece)
+    # We use the o200k tokenizer (GPT-4o) via the Xenova/gpt-4o repository
     print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer = AutoTokenizer.from_pretrained("Xenova/gpt-4o")
     tokenizer.pad_token = tokenizer.eos_token
 
     # 3. Dataset
@@ -72,6 +72,7 @@ def train():
     # 5. Optimizer
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
+    scaler = GradScaler() # Initialize Mixed Precision Scaler
 
     # 6. Training Loop
     print("Starting training...")
@@ -84,22 +85,22 @@ def train():
         for batch_idx, (input_ids, targets) in enumerate(progress_bar):
             input_ids, targets = input_ids.to(device), targets.to(device)
             
-            # Forward pass
-            logits = model(input_ids)
-            
-            # Shift logits and targets for Causal LM loss
-            # Logits: [B, T, V] -> [B, T-1, V]
-            # Targets: [B, T] -> [B, T-1]
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = targets[..., 1:].contiguous()
-            
-            # Flatten
-            loss = criterion(shift_logits.view(-1, config.vocab_size), shift_labels.view(-1))
-            
-            # Backward pass
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            
+            # Mixed Precision Forward pass
+            with autocast():
+                logits = model(input_ids)
+                
+                # Shift logits and targets for Causal LM loss
+                shift_logits = logits[..., :-1, :].contiguous()
+                shift_labels = targets[..., 1:].contiguous()
+                
+                loss = criterion(shift_logits.view(-1, config.vocab_size), shift_labels.view(-1))
+            
+            # Backward pass with scaler
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             
             total_loss += loss.item()
             progress_bar.set_postfix({"loss": loss.item()})

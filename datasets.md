@@ -11,6 +11,9 @@ Based on the latest research (2024-2025), here is a curated list of datasets to 
     *   **Use Case**: Human-like interaction and helpfulness.
 
 ## 2. Coding & Technical Reasoning (The "Code" Ability)
+*   **Dataset**: `nvidia/OpenCodeReasoning` (New 2025)
+    *   **Description**: High-quality coding reasoning dataset.
+    *   **Use Case**: Complex code logic and problem solving.
 *   **Dataset**: `nampdn-ai/tiny-codes`
     *   **Description**: A collection of ~1.6M code snippets and programming problems.
     *   **Use Case**: Syntax learning, code generation, and logic.
@@ -21,7 +24,10 @@ Based on the latest research (2024-2025), here is a curated list of datasets to 
     *   **Description**: Instruction-following dataset specifically for code tasks.
     *   **Use Case**: Answering "How do I write a function to..." questions.
 
-## 3. Mathematical & Logical Reasoning (The "Reasoning" Ability)
+## 3. Mathematical, Scientific & Logical Reasoning (The "Reasoning" Ability)
+*   **Dataset**: `open-thoughts/OpenThoughts-114k` (New 2025)
+    *   **Description**: State-of-the-art reasoning dataset covering math, science, and code.
+    *   **Use Case**: Deep reasoning and Chain-of-Thought (CoT).
 *   **Dataset**: `microsoft/orca-math-word-problems-200k`
     *   **Description**: High-quality math word problems with step-by-step solutions.
     *   **Use Case**: Teaching the model to think step-by-step (Chain of Thought).
