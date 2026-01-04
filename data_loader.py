@@ -91,7 +91,8 @@ def create_main_dataset(sample_size=1000):
 
     # New: OpenCodeReasoning (High quality coding reasoning)
     try:
-        ds_code_reasoning = load_dataset("nvidia/OpenCodeReasoning", split="train")
+        # Using 'split_0' config as required by the dataset
+        ds_code_reasoning = load_dataset("nvidia/OpenCodeReasoning", "split_0", split="train")
         if sample_size: ds_code_reasoning = ds_code_reasoning.select(range(sample_size))
         ds_code_reasoning = ds_code_reasoning.map(format_chat_instruction, remove_columns=ds_code_reasoning.column_names)
     except Exception as e:

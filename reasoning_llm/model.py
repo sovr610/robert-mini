@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from dataclasses import dataclass
+from torch.utils.checkpoint import checkpoint
 
 class RMSNorm(nn.Module):
     """Root Mean Square Normalization - faster than LayerNorm, used in LLaMA/Mistral."""
@@ -152,7 +153,11 @@ class ReasoningLLM(nn.Module):
         # For simplicity, we'll let the attention layer handle causality.
         
         for layer in self.layers:
-            x = layer(x)
+            if self.training:
+                # Use gradient checkpointing to save memory
+                x = checkpoint(layer, x, use_reentrant=False)
+            else:
+                x = layer(x)
             
         return self.output(self.norm(x))
 
