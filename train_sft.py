@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.amp import GradScaler, autocast
 from transformers import AutoTokenizer
@@ -9,6 +8,15 @@ from data_loader import create_main_dataset
 import os
 from tqdm import tqdm
 import gc
+
+# Use 8-bit AdamW to reduce optimizer memory footprint by 75%
+try:
+    import bitsandbytes as bnb
+    USE_8BIT_OPTIM = True
+except ImportError:
+    import torch.optim as optim
+    USE_8BIT_OPTIM = False
+    print("Warning: bitsandbytes not found. Install with 'pip install bitsandbytes' for 8-bit optimizer.")
 
 # Optimize CUDA memory allocation
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
@@ -74,8 +82,15 @@ def train():
     
     model = ReasoningLLM(config).to(device)
     
-    # 5. Optimizer
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+    # 5. Optimizer (8-bit AdamW saves ~75% memory for optimizer states)
+    if USE_8BIT_OPTIM:
+        optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=learning_rate)
+        print("Using 8-bit AdamW optimizer (memory efficient)")
+    else:
+        import torch.optim as optim
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+        print("Using standard AdamW optimizer")
+    
     criterion = nn.CrossEntropyLoss()
     scaler = GradScaler('cuda') # Initialize Mixed Precision Scaler
 

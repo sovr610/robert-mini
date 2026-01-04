@@ -43,6 +43,16 @@ class ModelRegistry:
                 vocab_size=32000,
                 max_seq_len=32768
             ),
+            # Smaller 3B config that fits on a single A100 80GB with full optimizer
+            "verse-3b": ModelConfig(
+                dim=3072,
+                n_layers=26,
+                n_heads=24,
+                n_kv_heads=8,
+                hidden_dim=8192,
+                vocab_size=200064,  # o200k tokenizer size
+                max_seq_len=4096
+            ),
             "test-tiny": ModelConfig(
                 dim=256,
                 n_layers=4,
