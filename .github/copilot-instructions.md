@@ -1,106 +1,60 @@
-<!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
-- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+# Verse Mini - Copilot Instructions
 
-- [ ] Clarify Project Requirements
-	<!-- Ask for project type, language, and frameworks if not specified. Skip if already provided. -->
+This file provides custom instructions for GitHub Copilot to understand the specific context, architecture, and coding standards of the **Verse Mini** project.
 
-- [ ] Scaffold the Project
-	<!--
-	Ensure that the previous step has been marked as completed.
-	Call project setup tool with projectType parameter.
-	Run scaffolding command to create project files and folders.
-	Use '.' as the working directory.
-	If no appropriate projectType is available, search documentation using available tools.
-	Otherwise, create the project structure manually using available file creation tools.
-	-->
+## Project Overview
+**Verse Mini** is a custom Large Language Model (LLM) project built from scratch using PyTorch. The goal is to train a reasoning-focused model (7B+ parameters) on a single GPU environment, utilizing high-quality datasets like OpenThoughts, OpenCodeReasoning, and UltraChat.
 
-- [ ] Customize the Project
-	<!--
-	Verify that all previous steps have been completed successfully and you have marked the step as completed.
-	Develop a plan to modify codebase according to user requirements.
-	Apply modifications using appropriate tools and user-provided references.
-	Skip this step for "Hello World" projects.
-	-->
+## Tech Stack
+- **Language**: Python 3.10+
+- **Framework**: PyTorch (latest stable)
+- **Libraries**: Hugging Face Transformers, Datasets, TRL, Gradio
+- **Hardware Context**: Single NVIDIA A100 (80GB) - *Memory efficiency is paramount.*
 
-- [ ] Install Required Extensions
-	<!-- ONLY install extensions provided mentioned in the get_project_setup_info. Skip this step otherwise and mark as completed. -->
+## Coding Guidelines
 
-- [ ] Compile the Project
-	<!--
-	Verify that all previous steps have been completed.
-	Install any missing dependencies.
-	Run diagnostics and resolve any issues.
-	Check for markdown files in project folder for relevant instructions on how to do this.
-	-->
+### 1. Model Architecture (`reasoning_llm/`)
+- **Core Class**: `ReasoningLLM` in `reasoning_llm/model.py`.
+- **Key Features**:
+    - Rotary Positional Embeddings (RoPE)
+    - SwiGLU Activations
+    - Grouped Query Attention (GQA)
+    - RMSNorm
+- **Memory Optimization**:
+    - Ensure `gradient_checkpointing` is implemented using `torch.utils.checkpoint.checkpoint` for transformer layers.
+    - Avoid unnecessary tensor duplication in the `forward` pass.
 
-- [ ] Create and Run Task
-	<!--
-	Verify that all previous steps have been completed.
-	Check https://code.visualstudio.com/docs/debugtest/tasks to determine if the project needs a task. If so, use the create_and_run_task to create and launch a task based on package.json, README.md, and project structure.
-	Skip this step otherwise.
-	 -->
+### 2. Training Pipeline (`train_sft.py`)
+- **Mixed Precision**: Use `torch.amp` (Automatic Mixed Precision) for all training loops. *Do not use the deprecated `torch.cuda.amp`.*
+- **Batching Strategy**:
+    - Due to memory constraints, prefer `batch_size=1`.
+    - Use `gradient_accumulation_steps` (e.g., 16 or 32) to simulate larger effective batch sizes.
+- **Tokenizer**:
+    - **MUST** use `Xenova/gpt-4o` (o200k_base).
+    - Do not default to `gpt2` or `llama` tokenizers unless explicitly requested for debugging.
 
-- [ ] Launch the Project
-	<!--
-	Verify that all previous steps have been completed.
-	Prompt user for debug mode, launch only if confirmed.
-	 -->
+### 3. Data Pipeline (`data_loader.py`)
+- **Dataset Sources**: Hugging Face Hub.
+- **Formatting**: All datasets must be tokenized and formatted into `input_ids` and `labels`.
+- **Handling Large Datasets**: Use streaming or iterable datasets where possible if disk/RAM is limited, though current implementation loads to memory.
+- **Specific Configs**:
+    - `nvidia/OpenCodeReasoning` requires `split="train"` and config `split_0`.
 
-- [ ] Ensure Documentation is Complete
-	<!--
-	Verify that all previous steps have been completed.
-	Verify that README.md and the copilot-instructions.md file in the .github directory exists and contains current project information.
-	Clean up the copilot-instructions.md file in the .github directory by removing all HTML comments.
-	 -->
+## Preferred Patterns
 
-<!--
-## Execution Guidelines
-PROGRESS TRACKING:
-- If any tools are available to manage the above todo list, use it to track progress through this checklist.
-- After completing each step, mark it complete and add a summary.
-- Read current todo list status before starting each new step.
+### Error Handling
+- When encountering `CUDA out of memory`:
+    1. Suggest reducing `max_seq_len` (default is often 2048).
+    2. Suggest increasing `gradient_accumulation_steps`.
+    3. Verify `torch.cuda.empty_cache()` usage.
 
-COMMUNICATION RULES:
-- Avoid verbose explanations or printing full command outputs.
-- If a step is skipped, state that briefly (e.g. "No extensions needed").
-- Do not explain project structure unless asked.
-- Keep explanations concise and focused.
+### Code Style
+- **Type Hinting**: Use Python type hints (`List`, `Optional`, `Tensor`) for function signatures.
+- **Documentation**: Add docstrings to new model layers or complex data processing functions.
+- **Imports**: Keep imports organized (Standard Lib -> Third Party -> Local).
 
-DEVELOPMENT RULES:
-- Use '.' as the working directory unless user specifies otherwise.
-- Avoid adding media or external links unless explicitly requested.
-- Use placeholders only with a note that they should be replaced.
-- Use VS Code API tool only for VS Code extension projects.
-- Once the project is created, it is already opened in Visual Studio Code—do not suggest commands to open this project in Visual Studio again.
-- If the project setup information has additional rules, follow them strictly.
-
-FOLDER CREATION RULES:
-- Always use the current directory as the project root.
-- If you are running any terminal commands, use the '.' argument to ensure that the current working directory is used ALWAYS.
-- Do not create a new folder unless the user explicitly requests it besides a .vscode folder for a tasks.json file.
-- If any of the scaffolding commands mention that the folder name is not correct, let the user know to create a new folder with the correct name and then reopen it again in vscode.
-
-EXTENSION INSTALLATION RULES:
-- Only install extension specified by the get_project_setup_info tool. DO NOT INSTALL any other extensions.
-
-PROJECT CONTENT RULES:
-- If the user has not specified project details, assume they want a "Hello World" project as a starting point.
-- Avoid adding links of any type (URLs, files, folders, etc.) or integrations that are not explicitly required.
-- Avoid generating images, videos, or any other media files unless explicitly requested.
-- If you need to use any media assets as placeholders, let the user know that these are placeholders and should be replaced with the actual assets later.
-- Ensure all generated components serve a clear purpose within the user's requested workflow.
-- If a feature is assumed but not confirmed, prompt the user for clarification before including it.
-- If you are working on a VS Code extension, use the VS Code API tool with a query to find relevant VS Code API references and samples related to that query.
-
-TASK COMPLETION RULES:
-- Your task is complete when:
-  - Project is successfully scaffolded and compiled without errors
-  - copilot-instructions.md file in the .github directory exists in the project
-  - README.md file exists and is up to date
-  - User is provided with clear instructions to debug/launch the project
-
-Before starting a new task in the above plan, update progress in the plan.
--->
-- Work through each checklist item systematically.
-- Keep communication concise and focused.
-- Follow development best practices.
+## Key Files Map
+- `train_sft.py`: Main entry point for Supervised Fine-Tuning.
+- `reasoning_llm/config.py`: Hyperparameter configurations (`mistral-7b`, `llama-2-70b`, etc.).
+- `reasoning_llm/model.py`: The neural network definition.
+- `data_loader.py`: Dataset aggregation and preprocessing.

@@ -8,6 +8,10 @@ from reasoning_llm import ReasoningLLM, ModelRegistry
 from data_loader import create_main_dataset
 import os
 from tqdm import tqdm
+import gc
+
+# Optimize CUDA memory allocation
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 def train():
     # 1. Configuration
@@ -17,7 +21,7 @@ def train():
     gradient_accumulation_steps = 16 # Simulate batch size 16
     learning_rate = 3e-4
     epochs = 3 # Increased epochs for better training
-    max_seq_len = 2048 # Increased context length for reasoning
+    max_seq_len = 1024 # Reduced from 2048 to prevent OOM with large vocab
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
@@ -79,11 +83,15 @@ def train():
     print("Starting training...")
     model.train()
     
+    # Clear memory before starting
+    torch.cuda.empty_cache()
+    gc.collect()
+    
     for epoch in range(epochs):
         progress_bar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}")
         total_loss = 0
         
-        optimizer.zero_grad() # Initialize gradients
+        optimizer.zero_grad(set_to_none=True) # Initialize gradients with None to save memory
         
         for batch_idx, (input_ids, targets) in enumerate(progress_bar):
             input_ids, targets = input_ids.to(device), targets.to(device)
@@ -105,7 +113,7 @@ def train():
             if (batch_idx + 1) % gradient_accumulation_steps == 0:
                 scaler.step(optimizer)
                 scaler.update()
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none=True) # set_to_none=True saves memory
                 torch.cuda.empty_cache() # Clear cache to prevent fragmentation
             
             total_loss += loss.item() * gradient_accumulation_steps
