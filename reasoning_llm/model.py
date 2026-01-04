@@ -143,6 +143,24 @@ class ReasoningLLM(nn.Module):
         self.norm = RMSNorm(config.dim, eps=config.norm_eps)
         self.output = nn.Linear(config.dim, config.vocab_size, bias=False)
         self.output.weight = self.tok_embeddings.weight  # Weight tying
+        
+        # Apply proper weight initialization
+        self.apply(self._init_weights)
+        
+        # Special scaled initialization for residual projections (GPT-2 style)
+        # Scale down init for layers that contribute to residual stream
+        for pn, p in self.named_parameters():
+            if pn.endswith('w3.weight') or pn.endswith('wo.weight'):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layers))
+    
+    def _init_weights(self, module):
+        """Initialize weights following LLaMA/GPT-2 best practices."""
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         x = self.tok_embeddings(tokens)
