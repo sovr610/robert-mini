@@ -1,7 +1,12 @@
 import torch
+import os
 import gradio as gr
 from transformers import AutoTokenizer
-from reasoning_llm import ReasoningLLM, ModelConfig
+from reasoning_llm import ReasoningLLM
+from reasoning_llm.config import ModelConfig
+
+# PyTorch 2.6+ requires allowlisting custom classes for safe loading
+torch.serialization.add_safe_globals([ModelConfig])
 
 # 1. Load Model & Tokenizer
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

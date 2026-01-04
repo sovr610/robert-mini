@@ -1,10 +1,14 @@
 import torch
 from transformers import AutoTokenizer
 from reasoning_llm import ReasoningLLM
+from reasoning_llm.config import ModelConfig
 
 # Configuration
 CHECKPOINT_PATH = "checkpoints/reasoning_llm_sft.pt"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# PyTorch 2.6+ requires allowlisting custom classes for safe loading
+torch.serialization.add_safe_globals([ModelConfig])
 
 def load_model():
     """Load the trained model and tokenizer."""
